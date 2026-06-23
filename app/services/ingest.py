@@ -263,17 +263,11 @@ def process_and_ingest_file(
             db.refresh(chunk_obj)
 
         # 5. Populate SQLite FTS5 Search Index
-        # We run this raw SQL command to populate the virtual FTS table
-        # chunk_id is the primary key of DocumentChunk in SQLite
+        from sqlalchemy import text
         for chunk_obj in db_chunks:
             db.execute(
-                db.connection().execute(
-                    # We will run this direct SQL through SQLite connection
-                )
-            )
-            # Standard insert:
-            db.execute(
-                sqlalchemy_fts_insert(chunk_obj.id, chunk_obj.content)
+                text("INSERT INTO document_chunks_fts (chunk_id, content) VALUES (:chunk_id, :content)"),
+                {"chunk_id": chunk_obj.id, "content": chunk_obj.content}
             )
         db.commit()
 
@@ -312,11 +306,7 @@ def process_and_ingest_file(
         db.commit()
         raise e
 
-def sqlalchemy_fts_insert(chunk_id: int, content: str):
-    from sqlalchemy import text
-    return text(
-        "INSERT INTO document_chunks_fts (chunk_id, content) VALUES (:chunk_id, :content)"
-    )
+
 
 def delete_document_from_indexes(db: Session, document: Document, provider: str, api_key: str):
     """
