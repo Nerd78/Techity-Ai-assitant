@@ -521,6 +521,8 @@ function renderDocumentsList() {
         documentsList.appendChild(div);
     });
     lucide.createIcons();
+}
+
 async function uploadFiles(files) {
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
