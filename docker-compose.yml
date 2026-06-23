@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  assistant:
+    build: .
+    container_name: techity_assistant
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_db:/workspace/chroma_db
+      - ./data:/workspace/data
+      - ./db:/workspace/db
+    environment:
+      - DATABASE_URL=sqlite:///./db/techity.db
+      - CHROMA_PERSIST_DIRECTORY=./chroma_db
+    restart: always

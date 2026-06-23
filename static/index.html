@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Techity AI Research Assistant</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js CDN for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <!-- ================= AUTH SCREEN ================= -->
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">
+                    <i data-lucide="brain-circuit" class="logo-icon"></i>
+                    <span>Techity AI</span>
+                </div>
+                <h2>Research Assistant</h2>
+                <p id="auth-subtitle">Sign in to start researching your documents</p>
+            </div>
+            
+            <form id="auth-form">
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="user"></i>
+                        <input type="text" id="username" placeholder="Enter username" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="lock"></i>
+                        <input type="password" id="password" placeholder="Enter password" required>
+                    </div>
+                </div>
+                <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block">
+                    <span>Sign In</span>
+                    <i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p id="auth-toggle-text">Don't have an account? <a href="#" id="auth-toggle-link">Sign Up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN APP VIEW ================= -->
+    <div id="app-screen" class="app-container hidden">
+        
+        <!-- --- LEFT SIDEBAR: Sessions & API Keys --- -->
+        <aside class="sidebar-left">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="brain-circuit" class="logo-icon-small"></i>
+                    <span>Techity AI</span>
+                </div>
+                <button id="btn-new-chat" class="btn btn-secondary btn-icon-text">
+                    <i data-lucide="plus"></i>
+                    <span>New Chat</span>
+                </button>
+            </div>
+            
+            <!-- Chats List -->
+            <div class="sessions-section">
+                <h3>Conversations</h3>
+                <div id="sessions-list" class="sessions-list">
+                    <!-- Session items will be dynamically rendered here -->
+                    <div class="sessions-empty">No conversations yet</div>
+                </div>
+            </div>
+            
+            <!-- API Configuration Settings -->
+            <div class="settings-section">
+                <h3>API Configuration</h3>
+                <div class="settings-card">
+                    <div class="settings-group">
+                        <label for="provider-select">LLM Provider</label>
+                        <select id="provider-select">
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label for="api-key-input">API Key</label>
+                        <div class="input-wrapper-api">
+                            <input type="password" id="api-key-input" placeholder="Paste your API key here">
+                            <button id="btn-toggle-key-visibility" type="button">
+                                <i data-lucide="eye" id="eye-icon"></i>
+                            </button>
+                        </div>
+                        <span class="helper-text">Credentials are kept local to your browser session.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Profile & Log Out -->
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i data-lucide="user-check"></i>
+                    <span id="user-display-name">Username</span>
+                </div>
+                <button id="btn-logout" class="btn-logout" title="Log Out">
+                    <i data-lucide="log-out"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- --- CENTER AREA: Interactive Chat --- -->
+        <main class="chat-area">
+            <header class="chat-header">
+                <div class="chat-title-container">
+                    <h2 id="current-chat-title">Select or start a conversation</h2>
+                    <span id="active-doc-badge" class="badge hidden">0 documents active</span>
+                </div>
+                
+                <div class="chat-header-actions">
+                    <button id="btn-toggle-right-panel" class="btn btn-secondary btn-icon" title="Toggle Dashboard & Docs">
+                        <i data-lucide="layout-dashboard"></i>
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Message Window -->
+            <div id="chat-messages-container" class="chat-messages">
+                <div class="chat-welcome-card">
+                    <i data-lucide="message-square-text"></i>
+                    <h2>Welcome to AI Research Assistant</h2>
+                    <p>Upload your research documents, textbooks, or notes, and start extracting answers with deep inline citations, semantic mapping, and latency dashboard monitoring.</p>
+                    <div class="welcome-steps">
+                        <div class="step">
+                            <span class="step-num">1</span>
+                            <span class="step-desc">Configure LLM Provider & Paste API Key in the left sidebar.</span>
+                        </div>
+                        <div class="step">
+                            <span class="step-num">2</span>
+                            <span class="step-desc">Upload PDF, DOCX, or TXT documents using the Dashboard panel.</span>
+                        </div>
+                        <div class="step">
+                            <span class="step-num">3</span>
+                            <span class="step-desc">Start typing queries to extract facts with sources.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="chat-input-container">
+                <form id="chat-input-form">
+                    <div class="textarea-wrapper">
+                        <textarea id="chat-input" rows="1" placeholder="Ask a question about your uploaded documents..." required></textarea>
+                        <button type="submit" id="btn-send" class="btn btn-primary btn-round">
+                            <i data-lucide="send"></i>
+                        </button>
+                    </div>
+                </form>
+                <div id="chat-status" class="chat-status"></div>
+            </div>
+        </main>
+
+        <!-- --- RIGHT SIDEBAR: Documents & Analytics --- -->
+        <aside class="sidebar-right" id="right-panel">
+            <div class="right-tabs">
+                <button id="tab-docs" class="tab-btn active">Documents</button>
+                <button id="tab-analytics" class="tab-btn">Observability</button>
+            </div>
+            
+            <!-- TAB CONTENT: DOCUMENTS -->
+            <div id="panel-docs" class="tab-panel active">
+                <div class="upload-zone" id="drop-zone">
+                    <i data-lucide="cloud-upload" class="upload-icon"></i>
+                    <p>Drag & drop documents here or <span class="browse-link">browse</span></p>
+                    <span class="upload-format">PDF, DOCX, or TXT (Max 15MB)</span>
+                    <input type="file" id="file-input" multiple class="hidden">
+                </div>
+                
+                <div class="documents-section">
+                    <h3>Uploaded Files</h3>
+                    <div id="documents-list" class="documents-list">
+                        <!-- Dynamic document items -->
+                        <div class="docs-empty">No documents uploaded yet</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TAB CONTENT: ANALYTICS & OBSERVE -->
+            <div id="panel-analytics" class="tab-panel">
+                <div class="metrics-summary">
+                    <div class="metric-card">
+                        <span class="metric-label">Avg Latency</span>
+                        <span id="metric-avg-latency" class="metric-val">0ms</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Faithfulness</span>
+                        <span id="metric-avg-faith" class="metric-val">0.0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Answer Relevance</span>
+                        <span id="metric-avg-relevance" class="metric-val">0.0</span>
+                    </div>
+                </div>
+                
+                <!-- Performance Charts -->
+                <div class="chart-container">
+                    <h4>Latency & Tokens Trend</h4>
+                    <canvas id="chart-latency"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h4>Evaluation Scores Distribution</h4>
+                    <canvas id="chart-eval"></canvas>
+                </div>
+                
+                <!-- Execution Traces list -->
+                <div class="traces-section">
+                    <h4>System Traces</h4>
+                    <div id="traces-list" class="traces-list">
+                        <!-- Dynamic Trace rows -->
+                        <div class="traces-empty">No query traces logged yet</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Script -->
+    <script src="app.js"></script>
+</body>
+</html>
