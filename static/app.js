@@ -1,13 +1,13 @@
 // ================= STATE & CONSTANTS =================
 let state = {
-    token: localStorage.getItem("techity_token") || null,
-    username: localStorage.getItem("techity_username") || null,
+    token: "default_token",
+    username: "Researcher",
     sessions: [],
     currentSessionId: null,
     documents: [],
     traces: [],
-    provider: localStorage.getItem("techity_provider") || "gemini",
-    apiKey: localStorage.getItem("techity_api_key") || ""
+    isSignup: false,
+    provider: "gemini"
 };
 
 // API Endpoint prefix
@@ -18,23 +18,8 @@ let latencyChart = null;
 let evalChart = null;
 
 // ================= DOM ELEMENTS =================
-const authScreen = document.getElementById("auth-screen");
 const appScreen = document.getElementById("app-screen");
-const authForm = document.getElementById("auth-form");
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
-const authSubmitBtn = document.getElementById("auth-submit-btn");
-const authSubtitle = document.getElementById("auth-subtitle");
-const authToggleLink = document.getElementById("auth-toggle-link");
-const authToggleText = document.getElementById("auth-toggle-text");
-
-// Sidebar
-const btnLogout = document.getElementById("btn-logout");
 const userDisplayName = document.getElementById("user-display-name");
-const providerSelect = document.getElementById("provider-select");
-const apiKeyInput = document.getElementById("api-key-input");
-const btnToggleKeyVisibility = document.getElementById("btn-toggle-key-visibility");
-const eyeIcon = document.getElementById("eye-icon");
 const btnNewChat = document.getElementById("btn-new-chat");
 const sessionsList = document.getElementById("sessions-list");
 
@@ -68,117 +53,26 @@ const tracesList = document.getElementById("traces-list");
 
 // ================= INITIALIZATION & AUTH =================
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Initial State Sync
-    providerSelect.value = state.provider;
-    apiKeyInput.value = state.apiKey;
+    // Set static user title
+    if (userDisplayName) {
+        userDisplayName.textContent = state.username;
+    }
     
-    // 2. Setup auth view
-    checkAuth();
+    // Load app data directly
+    loadSessions();
+    loadDocuments();
+    loadTraces();
     
-    // 3. Global Event Bindings
+    // Setup event handlers
     setupEventHandlers();
     
-    // 4. Lucide icons replacement
+    // Lucide icons replacement
     lucide.createIcons();
 });
 
-function checkAuth() {
-    if (state.token) {
-        authScreen.classList.add("hidden");
-        appScreen.classList.remove("hidden");
-        userDisplayName.textContent = state.username;
-        loadSessions();
-        loadDocuments();
-        loadTraces();
-    } else {
-        authScreen.classList.remove("hidden");
-        appScreen.classList.add("hidden");
-    }
-}
-
 function setupEventHandlers() {
-    // Auth toggles
-    let isSignup = false;
-    authToggleLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        isSignup = !isSignup;
-        if (isSignup) {
-            authSubtitle.textContent = "Create a new account to get started";
-            authSubmitBtn.querySelector("span").textContent = "Sign Up";
-            authToggleText.innerHTML = 'Already have an account? <a href="#" id="auth-toggle-link">Sign In</a>';
-        } else {
-            authSubtitle.textContent = "Sign in to start researching your documents";
-            authSubmitBtn.querySelector("span").textContent = "Sign In";
-            authToggleText.innerHTML = 'Don\'t have an account? <a href="#" id="auth-toggle-link">Sign Up</a>';
-        }
-        // Re-bind click event to the newly rendered link
-        setupEventHandlers();
-    });
 
-    // Submit authentication
-    authForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const username = usernameInput.value.trim();
-        const password = passwordInput.value;
-        const url = isSignup ? "/v1/auth/signup" : "/v1/auth/login";
-        
-        try {
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("password", password);
-            
-            const res = await fetch(url, {
-                method: "POST",
-                body: formData
-            });
-            
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || "Authentication failed");
-            
-            state.token = data.access_token;
-            state.username = data.username;
-            localStorage.setItem("techity_token", data.access_token);
-            localStorage.setItem("techity_username", data.username);
-            
-            checkAuth();
-            authForm.reset();
-        } catch (err) {
-            alert(err.message);
-        }
-    };
-
-    // Logout
-    btnLogout.addEventListener("click", () => {
-        localStorage.removeItem("techity_token");
-        localStorage.removeItem("techity_username");
-        state.token = null;
-        state.username = null;
-        state.sessions = [];
-        state.currentSessionId = null;
-        checkAuth();
-    });
-
-    // API Key config
-    providerSelect.addEventListener("change", (e) => {
-        state.provider = e.target.value;
-        localStorage.setItem("techity_provider", e.target.value);
-    });
-
-    apiKeyInput.addEventListener("input", (e) => {
-        state.apiKey = e.target.value.trim();
-        localStorage.setItem("techity_api_key", e.target.value.trim());
-    });
-
-    btnToggleKeyVisibility.addEventListener("click", () => {
-        if (apiKeyInput.type === "password") {
-            apiKeyInput.type = "text";
-            eyeIcon.setAttribute("data-lucide", "eye-off");
-        } else {
-            apiKeyInput.type = "password";
-            eyeIcon.setAttribute("data-lucide", "eye");
-        }
-        lucide.createIcons();
-    });
+    // API Configuration managed by server environment
 
     // Sessions & chat
     btnNewChat.addEventListener("click", createNewChatSession);
@@ -393,16 +287,7 @@ async function submitQuery(e) {
         alert("Please select or create a conversation first.");
         return;
     }
-    
-    if (!state.apiKey) {
-        alert("Please set your API key in the left sidebar configuration first.");
-        tabDocs.click();
-        if (rightPanel.classList.contains("collapsed")) {
-            rightPanel.classList.remove("collapsed");
-        }
-        apiKeyInput.focus();
-        return;
-    }
+
     
     const queryText = chatInput.value.trim();
     if (!queryText) return;
@@ -636,15 +521,7 @@ function renderDocumentsList() {
         documentsList.appendChild(div);
     });
     lucide.createIcons();
-}
-
 async function uploadFiles(files) {
-    if (!state.apiKey) {
-        alert("Please set your API key in the left sidebar configuration first.");
-        apiKeyInput.focus();
-        return;
-    }
-    
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
@@ -699,14 +576,10 @@ async function uploadFiles(files) {
 }
 
 async function deleteDocument(docId) {
-    if (!state.apiKey) {
-        alert("Authentication API key required to delete from vector index.");
-        return;
-    }
     if (!confirm("Are you sure you want to delete this document?")) return;
     
     try {
-        const res = await fetch(`/v1/documents/${docId}?provider=${state.provider}&api_key=${state.apiKey}`, {
+        const res = await fetch(`/v1/documents/${docId}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${state.token}` }
         });

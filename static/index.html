@@ -17,47 +17,8 @@
 </head>
 <body>
 
-    <!-- ================= AUTH SCREEN ================= -->
-    <div id="auth-screen" class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <div class="logo">
-                    <i data-lucide="brain-circuit" class="logo-icon"></i>
-                    <span>Techity AI</span>
-                </div>
-                <h2>Research Assistant</h2>
-                <p id="auth-subtitle">Sign in to start researching your documents</p>
-            </div>
-            
-            <form id="auth-form">
-                <div class="input-group">
-                    <label for="username">Username</label>
-                    <div class="input-wrapper">
-                        <i data-lucide="user"></i>
-                        <input type="text" id="username" placeholder="Enter username" required>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <div class="input-wrapper">
-                        <i data-lucide="lock"></i>
-                        <input type="password" id="password" placeholder="Enter password" required>
-                    </div>
-                </div>
-                <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-block">
-                    <span>Sign In</span>
-                    <i data-lucide="arrow-right"></i>
-                </button>
-            </form>
-            
-            <div class="auth-footer">
-                <p id="auth-toggle-text">Don't have an account? <a href="#" id="auth-toggle-link">Sign Up</a></p>
-            </div>
-        </div>
-    </div>
-
     <!-- ================= MAIN APP VIEW ================= -->
-    <div id="app-screen" class="app-container hidden">
+    <div id="app-screen" class="app-container">
         
         <!-- --- LEFT SIDEBAR: Sessions & API Keys --- -->
         <aside class="sidebar-left">
@@ -81,39 +42,24 @@
                 </div>
             </div>
             
-            <!-- API Configuration Settings -->
+            <!-- Server Config status -->
             <div class="settings-section">
-                <h3>API Configuration</h3>
-                <div class="settings-card">
-                    <div class="settings-group">
-                        <label for="provider-select">LLM Provider</label>
-                        <select id="provider-select">
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI</option>
-                        </select>
+                <h3>System Status</h3>
+                <div class="settings-card" style="padding: 14px; text-align: center; background: #141820; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.85rem; color: var(--success); font-weight: 600;">
+                        <span class="pulse-indicator" style="width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; display: inline-block;"></span>
+                        <span>Gemini AI Engaged</span>
                     </div>
-                    <div class="settings-group">
-                        <label for="api-key-input">API Key</label>
-                        <div class="input-wrapper-api">
-                            <input type="password" id="api-key-input" placeholder="Paste your API key here">
-                            <button id="btn-toggle-key-visibility" type="button">
-                                <i data-lucide="eye" id="eye-icon"></i>
-                            </button>
-                        </div>
-                        <span class="helper-text">Credentials are kept local to your browser session.</span>
-                    </div>
+                    <span class="helper-text" style="display: block; margin-top: 4px; text-align: center; font-size: 0.65rem; color: var(--text-muted);">API keys are loaded securely from server env.</span>
                 </div>
             </div>
             
-            <!-- User Profile & Log Out -->
+            <!-- User Profile (Static) -->
             <div class="sidebar-footer">
                 <div class="user-profile">
-                    <i data-lucide="user-check"></i>
-                    <span id="user-display-name">Username</span>
+                    <i data-lucide="user-check" style="color: var(--success);"></i>
+                    <span id="user-display-name">Researcher Mode</span>
                 </div>
-                <button id="btn-logout" class="btn-logout" title="Log Out">
-                    <i data-lucide="log-out"></i>
-                </button>
             </div>
         </aside>
 

@@ -11,6 +11,11 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 import shutil
 
+# Ensure directories exist before database connection or file uploads
+os.makedirs("./db", exist_ok=True)
+os.makedirs("./data", exist_ok=True)
+os.makedirs("./static", exist_ok=True)
+
 from app.core.config import settings
 from app.core.database import Base, engine, get_db
 from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
@@ -36,21 +41,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Authentication Dependency
-security = HTTPBearer()
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
-    token = credentials.credentials
-    username = decode_access_token(token)
-    if not username:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = db.query(User).filter(User.username == username).first()
+# Authentication Bypassed - Defaults to a single system user
+def get_current_user(db: Session = Depends(get_db)) -> User:
+    user = db.query(User).filter(User.username == "default_researcher").first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        user = User(username="default_researcher", hashed_password="default_hashed_password")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 # ----------------- Auth Routes -----------------
@@ -91,19 +89,26 @@ def get_me(user: User = Depends(get_current_user)):
 @app.post("/v1/ingest")
 async def ingest_file(
     file: UploadFile = File(...),
-    provider: str = Form(...),
-    api_key: str = Form(...),
+    provider: Optional[str] = Form(None),
+    api_key: Optional[str] = Form(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Ensure data storage folder exists
-    data_dir = "./data"
-    os.makedirs(data_dir, exist_ok=True)
-    
+    if provider in [None, "", "undefined", "null"]:
+        provider = settings.DEFAULT_LLM_PROVIDER
+    if not api_key or api_key.strip() in ["", "undefined", "null"]:
+        api_key = settings.GEMINI_API_KEY if provider == "gemini" else settings.OPENAI_API_KEY
+        
+    if not api_key:
+        raise HTTPException(
+            status_code=400, 
+            detail="LLM API key is not configured on the backend or provided by the client."
+        )
+
     # Save the file locally
     file_id = str(time.time()).replace(".", "")
     safe_filename = f"{file_id}_{file.filename}"
-    temp_path = os.path.join(data_dir, safe_filename)
+    temp_path = os.path.join("./data", safe_filename)
     
     with open(temp_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -154,8 +159,8 @@ def list_documents(user: User = Depends(get_current_user), db: Session = Depends
 @app.delete("/v1/documents/{document_id}")
 def delete_document(
     document_id: int, 
-    provider: str,
-    api_key: str,
+    provider: Optional[str] = None,
+    api_key: Optional[str] = None,
     user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
@@ -163,6 +168,11 @@ def delete_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
+    if provider in [None, "", "undefined", "null"]:
+        provider = settings.DEFAULT_LLM_PROVIDER
+    if not api_key or api_key.strip() in ["", "undefined", "null"]:
+        api_key = settings.GEMINI_API_KEY if provider == "gemini" else settings.OPENAI_API_KEY
+
     try:
         # Delete from local file system
         if os.path.exists(doc.filepath):
@@ -226,8 +236,8 @@ async def run_query(
     background_tasks: BackgroundTasks,
     session_id: str = Form(...),
     query: str = Form(...),
-    provider: str = Form(...),
-    api_key: str = Form(...),
+    provider: Optional[str] = Form(None),
+    api_key: Optional[str] = Form(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -235,6 +245,16 @@ async def run_query(
     session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == user.id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    if provider in [None, "", "undefined", "null"]:
+        provider = settings.DEFAULT_LLM_PROVIDER
+    if not api_key or api_key.strip() in ["", "undefined", "null"]:
+        api_key = settings.GEMINI_API_KEY if provider == "gemini" else settings.OPENAI_API_KEY
+
+    if not api_key:
+        async def err_stream():
+            yield f"data: {json.dumps({'type': 'error', 'text': 'API key is missing on the server. Please define GEMINI_API_KEY in the environment or .env.'})}\n\n"
+        return StreamingResponse(err_stream(), media_type="text/event-stream")
 
     # Fetch previous messages for the agentic rewriter
     db_messages = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at.asc()).all()
@@ -246,15 +266,11 @@ async def run_query(
     db.commit()
 
     async def stream_wrapper():
-        # Yield the client connection token
         full_assistant_reply = ""
         citations_data = []
-        
-        # We fetch the engine URL for background evals (so it can open its own connection)
         db_url = settings.DATABASE_URL
         
         try:
-            # Call generation stream
             stream = answer_query_stream(
                 db=db,
                 session_id=session_id,
@@ -283,19 +299,16 @@ async def run_query(
             db.add(assistant_msg)
             db.commit()
             
-            # Retrieve the trace row we just logged to launch LLM background evaluation
+            # Retrieve the trace row we just logged
             last_trace = db.query(Trace).filter(
                 Trace.session_id == session_id, 
                 Trace.user_id == user.id
             ).order_by(Trace.created_at.desc()).first()
             
             if last_trace:
-                # Build context snippet for the evaluation judge
-                # We query for the hybrid context to pass to the evaluator
                 chunks = get_hybrid_context(db, last_trace.condensed_query or query, user.id, provider, api_key)
                 context_text = "\n".join([f"[{i+1}] {c['content']}" for i, c in enumerate(chunks)])
                 
-                # Register background evaluation task
                 background_tasks.add_task(
                     evaluate_and_update_trace,
                     query=query,
@@ -317,9 +330,6 @@ async def run_query(
 
 @app.get("/v1/traces")
 def get_traces(limit: int = 50, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Returns traces logged in SQLite for displaying inside the Observability Dashboard.
-    """
     traces = db.query(Trace).filter(Trace.user_id == user.id).order_by(Trace.created_at.desc()).limit(limit).all()
     return [
         {
@@ -337,7 +347,5 @@ def get_traces(limit: int = 50, user: User = Depends(get_current_user), db: Sess
         for t in traces
     ]
 
-# ----------------- Serve static frontend -----------------
-# Ensure the static folder exists
-os.makedirs("./static", exist_ok=True)
+# Serve static files last to prevent route overlap
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
