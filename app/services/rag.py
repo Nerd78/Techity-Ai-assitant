@@ -171,6 +171,15 @@ def get_hybrid_context(
     keyword_res = search_sqlite_fts(db, query, user_id, limit=15)
     return reciprocal_rank_fusion(vector_res, keyword_res, top_n=top_n)
 
+def is_greeting_or_general(query: str) -> bool:
+    q = query.lower().strip().replace("?", "").replace("!", "").replace(".", "")
+    greetings = {"hi", "hello", "hey", "hola", "greetings", "good morning", "good afternoon", "good evening", "howdy"}
+    if q in greetings:
+        return True
+    if q in {"who are you", "what is this", "help", "what can you do", "get started"}:
+        return True
+    return False
+
 def answer_query_stream(
     db: Session,
     session_id: str,
@@ -186,6 +195,15 @@ def answer_query_stream(
     """
     start_time = time.time()
     
+    # Check if the query is a simple greeting
+    if is_greeting_or_general(query):
+        welcome_text = "Hello! I am your AI Research Assistant. I have successfully chunked and embedded your documents. You can ask me questions about their contents, request summaries, or ask for analysis (such as evaluating a resume or comparing papers). How can I help you today?"
+        for token in welcome_text.split(" "):
+            yield json.dumps({"type": "token", "text": token + " "})
+            time.sleep(0.01)
+        yield json.dumps({"type": "citations", "citations": []})
+        return
+
     # 1. Condense/Rewrite user query
     condensed_query = rewrite_query(chat_history, query, provider, api_key)
     
@@ -202,14 +220,15 @@ def answer_query_stream(
         context_text += f"Content: {chunk['content']}\n\n"
 
     # Assemble system instructions & RAG prompt
-    system_prompt = """You are an advanced AI Research Assistant. Your task is to answer the user's question accurately using ONLY the provided document context references.
+    system_prompt = """You are an advanced AI Research Assistant. Your task is to answer the user's question accurately using the provided document context references.
 
 Rules:
-1. Ground your answer strictly in the provided document references. If the context does not contain the answer or is insufficient, say: "I cannot find the answer in the uploaded documents."
-2. Do not hallucinate or assume facts beyond what is written.
-3. For every fact you state that is derived from the context, cite the document reference index inline using brackets, e.g., "The revenue grew by 15% in 2023 [1]." 
-4. If facts are from multiple references, list them, e.g., "[1, 3]".
-5. Provide a clear, professional, and well-structured markdown response.
+1. Ground your answer strictly in the provided document references. If the query asks for a summary, analysis, review, or evaluation of the documents (like rating or reviewing a resume), perform it thoroughly and helper-fully using the details in the documents.
+2. If the query is completely unrelated to the documents or if there is no context available, state: "I cannot find the answer in the uploaded documents."
+3. Do not make up facts or assume external information.
+4. For every fact you state that is derived from the context, cite the document reference index inline using brackets, e.g., "The candidate has 3 years of experience in Python [1]." 
+5. If facts are from multiple references, list them, e.g., "[1, 3]".
+6. Provide a clear, professional, and well-structured markdown response.
 """
 
     user_prompt = f"""Document context references:
