@@ -17,19 +17,19 @@ An end-to-end, production-ready AI Research Assistant that ingests research docu
 +---------------------------------------------+----------------------------------------------+
 |                                  FastAPI Backend Service                                   |
 |                                                                                            |
-|   +------------------+     +------------------------+     +-----------------------------+  |
-|   |  Auth Router     |     |   Ingestion Router     |     |      Query / RAG Router     |  |
-|   |  • JWT Tokens    |     |   • File Parsers       |     |      • Agentic Rewriter     |  |
-|   |  • BCrypt Pass   |     |   • Recursive Chunker  |     |      • Hybrid Search Engine |  |
-|   +--------+---------+     +-----------+------------+     +--------------+--------------+  |
-|            |                           |                                 |                 |
-|            | Write                     | Vector Embed / Insert           | Read / Query    |
-|            v                           v                                 v                 |
-|   +--------+---------+     +-----------+------------+     +--------------+--------------+  |
+|                            +------------------------+     +-----------------------------+  |
+|                            |   Ingestion Router     |     |      Query / RAG Router     |  |
+|                            |   • File Parsers       |     |      • Agentic Rewriter     |  |
+|                            |   • Recursive Chunker  |     |      • Hybrid Search Engine |  |
+|                            +-----------+------------+     +--------------+--------------+  |
+|                                        |                                 |                 |
+|                                        | Vector Embed / Insert           | Read / Query    |
+|                                        v                                 v                 |
+|   +------------------+     +-----------+------------+     +--------------+--------------+  |
 |   | SQLite Database  |     |   ChromaDB (Embedded)  |     |      LLM APIs Gateway       |  |
-|   | • Users / Chats  |     |   • HNSW Vector Index  |     |      • Gemini / OpenAI      |  |
-|   | • FTS5 Keywords  |     |   • Meta Filters       |     |      • Judge Evaluator      |  |
-|   | • Query Traces   |     |                        |     |                      |  |
+|   | • Default User   |     |   • HNSW Vector Index  |     |      • Gemini / OpenAI      |  |
+|   | • Chats / Traces |     |   • Meta Filters       |     |      • Judge Evaluator      |  |
+|   | • FTS5 Keywords  |     |                        |     |                      |  |
 |   +------------------+     +------------------------+     +-----------------------------+  |
 |                                                                                            |
 +--------------------------------------------------------------------------------------------+
@@ -84,10 +84,10 @@ Access the web dashboard in your browser:
 http://localhost:8000
 ```
 
-### 3. Sign In & Setup Keys
-1. Create a new user account (Sign Up) and Log In.
-2. In the Left Sidebar under **API Configuration**, select your provider (**Google Gemini** or **OpenAI**) and paste your API key. (Credentials are stored locally in browser session storage).
-3. Drag & drop files to compile your vector database indices.
+### 3. Start Uploading & Querying
+1. The dashboard will load directly, bypassing any sign-in/up requirement, using a default workspace researcher profile.
+2. In the Right Sidebar under **Documents**, drag and drop your files to compile your vector and keyword databases.
+3. Chat with the research assistant, review real-time source citations, and check the **Observability** tab for mathematical relevance and faithfulness evaluations.
 
 ---
 
